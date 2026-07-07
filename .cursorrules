@@ -1,0 +1,62 @@
+# Lattis One — ATLAS — Cursor Project Rules
+
+You are working on a Laravel + Inertia.js content generation & publishing pipeline.
+Read /docs/MVP_ROADMAP.md before starting any new stage of work. Read the other
+files in /docs (the original client planning docs) when you need the full
+detail behind a decision referenced in the roadmap.
+
+## Hard architectural rules — never violate these without being told explicitly
+
+1. **Two databases, never mixed.** MariaDB holds all structured/operational data
+   (sites, jobs, statuses, credentials, logs). MongoDB holds all content data
+   (article bodies, author persona documents, prompt templates). A MariaDB
+   record holds an ID/status; MongoDB holds the actual text. Never store article
+   body text in MariaDB, and never store operational status fields in MongoDB.
+
+2. **Three interfaces are the seams of this system.** All AI calls go through
+   `AIProviderInterface`. All publishing goes through `PublishingAdapterInterface`.
+   All content rules go through `ContentFilterInterface`. Never call an AI
+   provider SDK, WordPress API, or FTP client directly from a job or controller —
+   always through an implementation of the relevant interface, selected by a
+   factory. Adding a new provider/adapter/filter must always mean "one new class",
+   never a change to existing generation, publishing, or validation code.
+
+3. **The HOLD rule is absolute.** If any content filter raises a HOLD flag, the
+   article goes to human review regardless of the site's `auto_publish` setting.
+   This must be enforced in the validator/service layer, not just in the UI —
+   never let a HOLD-flagged article auto-publish under any code path.
+
+4. **Never store credentials in plaintext.** Always `Crypt::encryptString()` /
+   `Crypt::decryptString()` via `CredentialService`. Never log a decrypted
+   credential.
+
+5. **Respect the article state machine.** Valid states: queued, generating,
+   generated, review, approved, scheduled, publishing, published, failed,
+   rejected, skipped. Only move an article through the documented transitions
+   in /docs/MVP_ROADMAP.md and the original Dev Plan — don't invent new states
+   or shortcut transitions.
+
+6. **Queues are channel-separated.** `ingestion`, `generation`, `publishing` are
+   distinct Horizon queue channels for a reason (different retry/backoff needs,
+   different cost/rate profiles). Don't collapse jobs onto one channel.
+
+## Scope discipline
+
+This is an MVP build (see /docs/MVP_ROADMAP.md). Do not add promo injection,
+full dashboards, multi-provider comparison logic, author voice-drift detection,
+or the full 10-check quality gate unless explicitly asked — these are deferred
+by design, not missing by accident. If a request seems to call for one of these,
+say so and confirm before building it.
+
+## Style
+
+- Follow standard Laravel conventions (thin controllers, service classes for
+  business logic, form requests for validation, jobs for anything async).
+- Every job must log its outcome to `system_logs` (job_type, entity_id, status,
+  message, payload) — this is deliberate groundwork for future monitoring/alerts,
+  not optional logging.
+- Write migrations with explicit column types and indexes as specified in the
+  planning docs, not Laravel defaults.
+- When implementing a new interface implementation, only add the new class and
+  factory registration — flag it clearly if you find yourself editing calling
+  code, since that likely means the interface is leaking.

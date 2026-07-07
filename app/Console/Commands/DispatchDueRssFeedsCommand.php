@@ -8,9 +8,18 @@ use Illuminate\Console\Command;
 
 /**
  * Runs every minute (register in routes/console.php or the scheduler).
- * Build in Roadmap Stage 2.
  * Dispatches FetchRssFeedJob for every active RssSource whose
  * fetch_frequency_minutes interval has elapsed — see RssSource::isDueForFetch().
+ *
+ * Deliberately does NOT filter out status='errored' sources — a source only
+ * reaches 'errored' after 3 failed fetch attempts (see FetchRssFeedJob),
+ * which is very often a transient issue (feed host hiccup, momentary
+ * network blip). FetchRssFeedJob resets status back to 'active' on its next
+ * successful fetch, so excluding 'errored' sources here would turn a
+ * transient failure into a permanent, silent stop with no automatic
+ * recovery path — exactly the "silent publish/feed failure" risk Stage 6
+ * calls out. isDueForFetch() already throttles retries to the source's own
+ * fetch_frequency_minutes, so this doesn't hammer a genuinely broken feed.
  */
 class DispatchDueRssFeedsCommand extends Command
 {
@@ -21,7 +30,6 @@ class DispatchDueRssFeedsCommand extends Command
     {
         RssSource::query()
             ->where('is_active', true)
-            ->where('status', 'active')
             ->orderBy('priority')
             ->get()
             ->filter(fn (RssSource $source) => $source->isDueForFetch())

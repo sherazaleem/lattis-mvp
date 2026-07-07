@@ -3,15 +3,20 @@
 namespace App\Services;
 
 use App\Models\Site;
+use App\Services\Publishing\PublishingAdapterFactory;
 use Illuminate\Support\Facades\Crypt;
 
 /**
  * The only place credentials are ever encrypted/decrypted/verified.
- * Build in Roadmap Stage 1. See .cursorrules rule 4 — never store or log
- * credentials in plaintext anywhere else in the codebase.
+ * See .cursorrules rule 4 — never store or log credentials in plaintext
+ * anywhere else in the codebase.
  */
 class CredentialService
 {
+    public function __construct(
+        protected PublishingAdapterFactory $adapterFactory,
+    ) {}
+
     public function encrypt(string $plain): string
     {
         return Crypt::encryptString($plain);
@@ -23,18 +28,27 @@ class CredentialService
     }
 
     /**
-     * TODO (Stage 4): resolve the site's PublishingAdapterInterface via the
-     * adapter factory and call verifyCredentials($site). Update
-     * credentials.credential_status and last_verified_at based on the result.
-     * Called by CredentialHealthCheckCommand on a daily schedule, and once
-     * before a site's very first publish.
-     *
-     * Stub returns true until Stage 4 builds the real adapter-backed check —
-     * false here would incorrectly halt publishing for every site before that
-     * check exists to actually justify it.
+     * Resolves the site's PublishingAdapterInterface via the factory and
+     * calls verifyCredentials($site). Updates credentials.credential_status
+     * and last_verified_at based on the result. Called by
+     * CredentialHealthCheckCommand daily, and before a site's first publish.
      */
     public function verifyCredentials(Site $site): bool
     {
-        return true;
+        $credential = $site->credentials()->where('adapter_type', $site->stack_type)->first();
+
+        if (!$credential) {
+            return false;
+        }
+
+        $adapter = $this->adapterFactory->make($site->stack_type);
+        $result = $adapter->verifyCredentials($site);
+
+        $credential->update([
+            'credential_status' => $result->valid ? 'active' : 'failed',
+            'last_verified_at' => $result->checkedAt ?? now(),
+        ]);
+
+        return $result->valid;
     }
 }

@@ -3,15 +3,16 @@
 namespace App\Console\Commands;
 
 use App\Models\Site;
+use App\Models\SystemLog;
 use App\Services\CredentialService;
 use Illuminate\Console\Command;
 
 /**
- * Runs daily. Build in Roadmap Stage 4.
- * Calls CredentialService::verifyCredentials() for every active site,
- * updates deployment_state, halts publishing on failure (see .cursorrules
- * rule 4 and the "publishing failures are silent" reasoning in the open
- * questions doc — this is the single most important alert to get right).
+ * Runs daily. Calls CredentialService::verifyCredentials() for every active
+ * site — that call itself updates credentials.credential_status, which is
+ * what actually halts (or un-halts) publishing for the site: see
+ * PublishingSchedulerCommand::credentialHalted() and PublishArticleJob's
+ * immediate-halt-on-auth-failure path.
  */
 class CredentialHealthCheckCommand extends Command
 {
@@ -26,9 +27,19 @@ class CredentialHealthCheckCommand extends Command
     public function handle(): void
     {
         Site::query()->where('is_active', true)->each(function (Site $site) {
-            // TODO: $ok = $this->credentials->verifyCredentials($site);
-            // update site.deployment_state + credentials.credential_status,
-            // and if failed, set is_active/publishing halt + log + alert.
+            $valid = $this->credentials->verifyCredentials($site);
+
+            SystemLog::create([
+                'job_type' => self::class,
+                'entity_type' => Site::class,
+                'entity_id' => $site->id,
+                'status' => $valid ? 'success' : 'failed',
+                'message' => $valid
+                    ? "Credentials verified OK for site [{$site->id}] {$site->domain}."
+                    : "Credential verification FAILED for site [{$site->id}] {$site->domain} — publishing halted.",
+            ]);
+
+            $this->info("{$site->domain}: ".($valid ? 'OK' : 'FAILED (halted)'));
         });
     }
 }

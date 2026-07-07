@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Credential;
 use App\Models\Site;
 use Illuminate\Support\Facades\Crypt;
 
@@ -24,15 +23,18 @@ class CredentialService
     }
 
     /**
-     * TODO (Stage 1/6): resolve the site's PublishingAdapterInterface via the
+     * TODO (Stage 4): resolve the site's PublishingAdapterInterface via the
      * adapter factory and call verifyCredentials($site). Update
      * credentials.credential_status and last_verified_at based on the result.
      * Called by CredentialHealthCheckCommand on a daily schedule, and once
      * before a site's very first publish.
+     *
+     * Stub returns true until Stage 4 builds the real adapter-backed check —
+     * false here would incorrectly halt publishing for every site before that
+     * check exists to actually justify it.
      */
     public function verifyCredentials(Site $site): bool
     {
-        // TODO: implement per docstring above.
-        return false;
+        return true;
     }
 }

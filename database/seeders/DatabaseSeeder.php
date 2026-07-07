@@ -11,15 +11,18 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Seeds the single admin account for this MVP (no roles, no registration —
+     * see .cursorrules: "skip the four-role system for now"). Credentials come
+     * from .env so nothing is hardcoded; re-running this is safe (idempotent).
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        User::updateOrCreate(
+            ['email' => env('ADMIN_EMAIL', 'admin@example.com')],
+            [
+                'name' => env('ADMIN_NAME', 'Admin'),
+                'password' => env('ADMIN_PASSWORD', 'password'),
+            ]
+        );
     }
 }

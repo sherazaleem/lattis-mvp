@@ -12,8 +12,16 @@ return new class extends Migration
             $table->id();
             $table->foreignId('rss_item_id')->constrained('rss_items');
             $table->foreignId('site_id')->constrained('sites');
-            $table->string('author_mongo_id', 255)->nullable(); // MVP: may be a hardcoded default author id
-            $table->string('mongo_id', 255)->nullable();        // MongoDB ObjectId of the full article document
+            $table->string('author_identifier', 255)->nullable(); // MVP: hardcoded default author, not a real record
+
+            // Article content — lives in MariaDB, not MongoDB (see .cursorrules
+            // deviation note: no MongoDB in this environment; two-database
+            // split was dropped for this MVP, article content moved here).
+            $table->string('title', 500)->nullable();
+            $table->string('slug', 255)->nullable();
+            $table->longText('body')->nullable();
+            $table->string('meta_description', 500)->nullable();
+            $table->string('focus_keyword', 255)->nullable();
 
             // Full state machine — see docs/MVP_ROADMAP.md. Do not shortcut transitions.
             $table->enum('status', [

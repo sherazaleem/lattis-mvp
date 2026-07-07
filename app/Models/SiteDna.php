@@ -23,6 +23,9 @@ class SiteDna extends Model
         'forbidden_topics' => 'array',
         'seo_posture' => 'array',
         'monetisation_rules' => 'array',
+        'ai_aggressiveness' => 'integer',
+        'min_word_count' => 'integer',
+        'version' => 'integer',
     ];
 
     public function site(): BelongsTo

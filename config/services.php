@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+    // Selects the AIProviderInterface implementation via AIProviderFactory.
+    // Adding a second provider later = one new class + one new match arm here,
+    // never a change to GenerateArticleJob.
+    'ai' => [
+        'provider' => env('AI_PROVIDER', 'anthropic'),
+    ],
+
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-sonnet-4-5'),
+    ],
+
 ];

@@ -10,7 +10,6 @@ class ArticlePayload
 {
     public function __construct(
         public readonly int $generatedArticleId,
-        public readonly string $mongoId,
         public readonly string $title,
         public readonly string $bodyHtml,
         public readonly ?string $slug = null,

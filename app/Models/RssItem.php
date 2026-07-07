@@ -41,4 +41,15 @@ class RssItem extends Model
     {
         return $this->source_word_count >= self::MIN_SOURCE_WORD_COUNT;
     }
+
+    public static function countWords(?string $html): int
+    {
+        $text = trim(strip_tags((string) $html));
+
+        if ($text === '') {
+            return 0;
+        }
+
+        return count(preg_split('/\s+/u', $text));
+    }
 }
